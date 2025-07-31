@@ -87,11 +87,9 @@ public class BoardManager : MonoBehaviour
         SafeShuffleGroup(opponentPieces, oppRows, "Opp");
         RebuildGrid();
 
-        // --- İlk oynayacak oyuncuyu rastgele belirle ---
-        Random.InitState(System.Environment.TickCount + GetInstanceID()); // (opsiyonel) editörde daha rastgele
-        turn = (Random.Range(0, 2) == 0) ? Turn.My : Turn.Opponent;       // 0 -> Player1 (My), 1 -> Player2 (Opponent)
-
-        // UI güncelle ve kısa mesaj göster
+        // --- İlk oynayacak oyuncuyu rastgele belirle (TEK ATAMA) ---
+        Random.InitState(System.Environment.TickCount + GetInstanceID());
+        turn = (Random.Range(0, 2) == 0) ? Turn.My : Turn.Opponent;
         UpdateTurnLabel();
         ShowMessage($"{CurrentPlayerDisplayName()} başlıyor!", messageDuration);
 
@@ -102,17 +100,15 @@ public class BoardManager : MonoBehaviour
         waitingDiceResult = false;
         if (selectedPiece != null) { selectedPiece.DeselectPiece(); selectedPiece = null; }
 
-
-        // --- BAŞLANGIÇTA İLK OYUNCUYU RASTGELE BELİRLE ---
-        turn = (Random.value < 0.5f) ? Turn.My : Turn.Opponent; // Player1 ya da Player2
-        UpdateTurnLabel();
-        ShowMessage($"{CurrentPlayerDisplayName()} başlıyor!", messageDuration);
-
         // Zar event'ine abone ol
         if (dice == null)
+        {
             Debug.LogError("[BoardManager] Dice referansı bağlanmadı!");
+        }
         else
+        {
             dice.OnRolled += OnDiceRolled;
+        }
 
         Debug.Log($"[START] İlk sıra: {turn}. Zar atmak için SPACE/R.");
     }
@@ -129,16 +125,38 @@ public class BoardManager : MonoBehaviour
         if (messageLabel != null && messageLabel.gameObject.activeSelf && Time.time >= messageHideAt && messageHideAt > 0f)
             messageLabel.gameObject.SetActive(false);
 
-        // --- Zar atma (Space veya R) ---
+        // --- MOUSE ile ZAR ATMA (her zaman çalışsın) ---
+        if (Input.GetMouseButtonDown(0))
+        {
+            Ray ray0 = cam.ScreenPointToRay(Input.mousePosition);
+
+            // Not: Maske kullanmıyoruz ki dice farklı layer'da da olsa görülsün.
+            if (Physics.Raycast(ray0, out RaycastHit hit0, 1000f))
+            {
+                // Debug için açıp bakabilirsin:
+                // Debug.Log($"[DiceClick] Hit: {hit0.collider.name} | Layer: {LayerMask.LayerToName(hit0.collider.gameObject.layer)}");
+
+                // Tıklanan şey Dice mı? (child/parent fark etmez)
+                var diceHit = hit0.collider.GetComponentInParent<Dice>();
+                if (diceHit != null && diceHit == dice)
+                {
+                    TryRollDice();   // Kuralları BoardManager kontrol ediyor
+                    return;          // Zara tıklandıysa kalan akışı çalıştırma
+                }
+            }
+        }
+
+        // --- Klavye ile zar atma (Space veya R) ---
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.R))
         {
             TryRollDice();
             return;
         }
 
-        // Zar atılmadan, ya da sonuç beklerken seçim/hamle yok
+        // Zar atılmadan ya da sonuç beklerken taş seçme/oynatma kapalı
         if (needRoll || waitingDiceResult) return;
 
+        // --- Taş seçme / kareye gitme ---
         if (!Input.GetMouseButtonDown(0)) return;
 
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
@@ -185,6 +203,7 @@ public class BoardManager : MonoBehaviour
         // Hamle bütçesinden düş
         SpendMoveAndAdvance();
     }
+
 
     // =================== UI HELPERLAR ===================
 
@@ -244,26 +263,28 @@ public class BoardManager : MonoBehaviour
 
         if (smilePendingReroll)
         {
-            // Gülen yüz sonrası tekrar atış
+            // Gülen yüz sonrası tekrar atış SONUCUNU işliyoruz
             smilePendingReroll = false;
 
             if (face == DiceFaces.P)
             {
-                ShowMessage("Pas geldi! Sıra karşıya geçti.", messageDuration);
+                ShowMessage("🙂 sonra P geldi! Bu el oynanamaz, sıra karşıya geçti.", messageDuration);
                 EndTurn();
                 return;
             }
             else if (face == DiceFaces.G)
             {
                 // Kendi 2 hamle (ANY), rakibe 1 hamle (ANY)
+                ShowMessage("🙂 sonra yine 🙂! 2 hamle (ANY) + rakipten 1 hamle (ANY).", messageDuration);
                 QueueSmileAnyMoves();
                 AutoAdvanceIfNoMoves();
                 return;
             }
             else
             {
-                // Sembol: kendine 2 hamle (o sembol), rakibe 1 hamle (o sembol)
-                QueueSmileSymbolMoves(face);
+                // ŞEKİL: SADECE mevcut oyuncu 2 hamle (o sembol), rakip hamlesi yok
+                ShowMessage($"🙂 sonra {face}! Bu sembolden 2 hamle hakkın var.", messageDuration);
+                QueueSmileSymbolMoves(face);  // <-- Artık sadece CURRENT 2 ekliyor
                 AutoAdvanceIfNoMoves();
                 return;
             }
@@ -280,7 +301,7 @@ public class BoardManager : MonoBehaviour
             case DiceFaces.G:
                 ShowMessage("🙂 Gülen yüz! Tekrar zar at.", messageDuration);
                 smilePendingReroll = true;
-                needRoll = true; // tekrar atış bekleniyor
+                needRoll = true; // tekrar atış bekleniyor (manuel)
                 break;
 
             default:
@@ -298,12 +319,13 @@ public class BoardManager : MonoBehaviour
         moveQueue.Enqueue(new MoveBudget(MoveOwner.Current, 1, req));
     }
 
+    // >>> DEĞİŞTİ: Artık sadece mevcut oyuncuya 2 hamle (o sembol). Rakip hamlesi YOK.
     private void QueueSmileSymbolMoves(DiceFaces face)
     {
         PieceKind req = FaceToKind(face);
         moveQueue.Clear();
         moveQueue.Enqueue(new MoveBudget(MoveOwner.Current, 2, req));  // current 2
-        moveQueue.Enqueue(new MoveBudget(MoveOwner.Opponent, 1, req)); // opponent 1
+        // (önceden buradaydı) moveQueue.Enqueue(new MoveBudget(MoveOwner.Opponent, 1, req));  // SİLİNDİ
     }
 
     private void QueueSmileAnyMoves()
@@ -713,3 +735,4 @@ public class BoardManager : MonoBehaviour
         return true;
     }
 }
+ 
