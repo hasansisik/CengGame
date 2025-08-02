@@ -242,7 +242,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 70, y: -35}
+  m_AnchoredPosition: {x: 25, y: -35}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &135334120
@@ -3393,6 +3393,8 @@ GameObject:
   - component: {fileID: 7816677403404606379}
   - component: {fileID: 7816677403404606378}
   - component: {fileID: 7816677403404606380}
+  - component: {fileID: 7816677403404606381}
+  - component: {fileID: 7816677403404606382}
   m_Layer: 0
   m_Name: Dice Mesh
   m_TagString: Untagged
@@ -4355,6 +4357,40 @@ MonoBehaviour:
   faceMap: 010000000200000003000000040000000500000006000000
   usePhysics: 1
   collectStats: 0
+--- !u!65 &7816677403404606381
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2419528003699472910}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.434575, y: 1.4345751, z: 1.4345748}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7816677403404606382
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2419528003699472910}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6225bdebcb76c274abe7f46d55b29768, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  boardManager: {fileID: 7685259906956671063}
 --- !u!33 &8373555444149048112
 MeshFilter:
   m_ObjectHideFlags: 0

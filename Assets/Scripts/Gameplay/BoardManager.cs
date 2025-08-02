@@ -14,7 +14,7 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private Color inactiveColor = new Color(1f, 1f, 1f, 0.65f); // diğeri soluk
     [SerializeField] private string player1Name = "Player 1"; // kahverengi
     [SerializeField] private string player2Name = "Player 2"; // krem
-    [SerializeField] private float messageDuration = 2f;
+    [SerializeField] private float messageDuration = 4f;
 
     private float messageHideAt = -1f;
 
@@ -268,14 +268,14 @@ public class BoardManager : MonoBehaviour
 
             if (face == DiceFaces.P)
             {
-                ShowMessage("🙂 sonra P geldi! Bu el oynanamaz, sıra karşıya geçti.", messageDuration);
+                ShowMessage("Gülen yüz sonra P geldi! Bu el oynanamaz, sıra karşıya geçti.", messageDuration);
                 EndTurn();
                 return;
             }
             else if (face == DiceFaces.G)
             {
                 // Kendi 2 hamle (ANY), rakibe 1 hamle (ANY)
-                ShowMessage("🙂 sonra yine 🙂! 2 hamle (ANY) + rakipten 1 hamle (ANY).", messageDuration);
+                ShowMessage("Gülen yüz'den sonra yine Gülen yüz! 2 hamle (ANY) + rakipten 1 hamle (ANY).", messageDuration);
                 QueueSmileAnyMoves();
                 AutoAdvanceIfNoMoves();
                 return;
@@ -283,7 +283,7 @@ public class BoardManager : MonoBehaviour
             else
             {
                 // ŞEKİL: SADECE mevcut oyuncu 2 hamle (o sembol), rakip hamlesi yok
-                ShowMessage($"🙂 sonra {face}! Bu sembolden 2 hamle hakkın var.", messageDuration);
+                ShowMessage($"Gülen yüz sonra {face}! Bu sembolden 2 hamle hakkın var.", messageDuration);
                 QueueSmileSymbolMoves(face);  // <-- Artık sadece CURRENT 2 ekliyor
                 AutoAdvanceIfNoMoves();
                 return;
@@ -299,7 +299,7 @@ public class BoardManager : MonoBehaviour
                 break;
 
             case DiceFaces.G:
-                ShowMessage("🙂 Gülen yüz! Tekrar zar at.", messageDuration);
+                ShowMessage("Gülen yüz! Tekrar zar at.", messageDuration);
                 smilePendingReroll = true;
                 needRoll = true; // tekrar atış bekleniyor (manuel)
                 break;
