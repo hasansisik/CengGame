@@ -18,7 +18,7 @@ MonoBehaviour:
   m_PlatformId: 0d2129357eac403d8b359c2dcbf82502
   m_PlatformBuildProfile:
     rid: 67314383296921648
-  m_OverrideGlobalSceneList: 1
+  m_OverrideGlobalSceneList: 0
   m_Scenes:
   - m_enabled: 1
     m_path: Assets/Scenes/CengStart.unity
@@ -28,7 +28,11 @@ MonoBehaviour:
     m_path: Assets/Scenes/CengLobi.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Ceng.unity
-  m_ScriptingDefines: []
+  m_ScriptingDefines:
+  - CengStart
+  - CengMenu
+  - CengLobi
+  - Ceng
   m_PlayerSettingsYaml:
     m_Settings: []
   references:
@@ -37,7 +41,7 @@ MonoBehaviour:
     - rid: 67314383296921648
       type: {class: OSXStandaloneBuildProfile, ns: UnityEditor.OSXStandalone, asm: UnityEditor.OSXStandalone.Extensions}
       data:
-        m_Development: 0
+        m_Development: 1
         m_ConnectProfiler: 0
         m_BuildWithDeepProfilingSupport: 0
         m_AllowDebugging: 0
