@@ -11,10 +11,6 @@ namespace Harfpoly.UI
         {
             var isWide = Screen.width / (float)Screen.height < minimumRatio;
             GetComponent<CanvasScaler>().matchWidthOrHeight = isWide ? 0 : 1;
-
-#if !UNITY_EDITOR
-            Destroy(this);
-#endif
         }
     }
 }
