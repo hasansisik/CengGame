@@ -17,9 +17,6 @@ namespace Photon.Pun
     using System.Collections.Generic;
     using Photon.Realtime;
 
-    #if UNITY_EDITOR
-    using UnityEditor;
-    #endif
 
     /// <summary>
     /// A PhotonView identifies an object across the network (viewID) and configures how the controlling client updates remote instances.

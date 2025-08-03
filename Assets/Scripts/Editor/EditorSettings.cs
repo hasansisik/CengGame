@@ -1,4 +1,3 @@
-#if UNITY_EDITOR
 using UnityEngine;
 
 namespace Harfpoly.EditorCode
@@ -14,4 +13,3 @@ namespace Harfpoly.EditorCode
         }
     }
 }
-#endif
