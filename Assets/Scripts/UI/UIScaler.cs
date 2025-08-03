@@ -11,7 +11,6 @@ namespace Harfpoly.UI
         {
             var isWide = Screen.width / (float)Screen.height < minimumRatio;
             GetComponent<CanvasScaler>().matchWidthOrHeight = isWide ? 0 : 1;
-
         }
     }
 }

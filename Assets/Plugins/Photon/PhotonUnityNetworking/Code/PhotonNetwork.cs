@@ -23,7 +23,10 @@ namespace Photon.Pun
     using Debug = UnityEngine.Debug;
     using Hashtable = ExitGames.Client.Photon.Hashtable;
 
+    #if UNITY_EDITOR
+    using UnityEditor;
     using System.IO;
+    #endif
 
 
     public struct InstantiateParameters
@@ -1021,15 +1024,31 @@ namespace Photon.Pun
         /// </summary>
         static PhotonNetwork()
         {
-            if (NetworkingClient == null)
-            {
-                NetworkingClient = new LoadBalancingClient();
-            }
+            #if !UNITY_EDITOR
+            StaticReset();  // in builds, we just reset/init the client once
+            #else
+
+                #if UNITY_2019_4_OR_NEWER
+                if (NetworkingClient == null)
+                {
+                    NetworkingClient = new LoadBalancingClient();
+                }
+                #else
+                StaticReset();  // in OLDER unity editor versions there is no RuntimeInitializeOnLoadMethod, so call reset
+                #endif
+
+            #endif
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
         private static void StaticReset()
         {
+            #if UNITY_EDITOR
+            if (!EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                return;
+            }
+            #endif
 
             // This clear is for when Domain Reloading is disabled. Typically will already be empty.
             monoRPCMethodsCache.Clear();
