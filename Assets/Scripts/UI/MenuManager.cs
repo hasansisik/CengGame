@@ -11,7 +11,7 @@ namespace Harfpoly.UI
         
         public void StartGame()
         {
-            UnityEngine.SceneManagement.SceneManager.LoadScene(nameof(Scenes.Lobby));
+            UnityEngine.SceneManagement.SceneManager.LoadScene(nameof(Scenes.CengStart));
         }
 
         public void QuitGame()
