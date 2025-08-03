@@ -5,5 +5,9 @@ namespace Harfpoly
         Menu,
         Lobby,
         Game,
+        CengStart,
+        CengMenu,
+        CengLobi,
+        Ceng,
     }
 }

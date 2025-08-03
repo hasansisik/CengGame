@@ -8,10 +8,19 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/CengStart.unity
     guid: 098f76ff8d5de234b82c2f1a1a5ea308
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Lobby.unity
     guid: 3cdfd0a143922b34c9d7b85d64532805
   - enabled: 1
+    path: Assets/Scenes/CengLobi.unity
+    guid: 52653739c1c2f4ff88eadb22015ded1c
+  - enabled: 1
+    path: Assets/Scenes/CengMenu.unity
+    guid: c545568de48174b29a223c1be473304e
+  - enabled: 1
+    path: Assets/Scenes/Ceng.unity
+    guid: cbdd52ab72f675d4faa6eea4b45afd91
+  - enabled: 0
     path: Assets/Scenes/HarfPoly.unity
     guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:

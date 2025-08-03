@@ -945,6 +945,10 @@ PrefabInstance:
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 767825990}
+    - target: {fileID: 8290564037590375056, guid: 6b1a53ac93520ed4bab3c387261b06d9, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: GoToCengMenu
+      objectReference: {fileID: 0}
     - target: {fileID: 8315340741425637970, guid: 6b1a53ac93520ed4bab3c387261b06d9, type: 3}
       propertyPath: m_Name
       value: StartButton
