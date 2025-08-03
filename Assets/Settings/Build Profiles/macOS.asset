@@ -17,16 +17,24 @@ MonoBehaviour:
   m_Subtarget: 2
   m_PlatformId: 0d2129357eac403d8b359c2dcbf82502
   m_PlatformBuildProfile:
-    rid: 67314382269841458
-  m_OverrideGlobalSceneList: 0
-  m_Scenes: []
+    rid: 67314383296921648
+  m_OverrideGlobalSceneList: 1
+  m_Scenes:
+  - m_enabled: 1
+    m_path: Assets/Scenes/CengStart.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/CengMenu.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/CengLobi.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Ceng.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []
   references:
     version: 2
     RefIds:
-    - rid: 67314382269841458
+    - rid: 67314383296921648
       type: {class: OSXStandaloneBuildProfile, ns: UnityEditor.OSXStandalone, asm: UnityEditor.OSXStandalone.Extensions}
       data:
         m_Development: 0

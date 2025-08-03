@@ -5,6 +5,7 @@ using Photon.Pun;
 using Photon.Realtime;
 using TMPro;
 using ExitGames.Client.Photon;
+using Harfpoly.UI;
 
 namespace Harfpoly.Network.Lobby
 {
@@ -166,19 +167,44 @@ namespace Harfpoly.Network.Lobby
                 {
                     GameObject roomItem = Instantiate(roomListItemPrefab, roomListParent);
                     
-                    // Room item'ı konfigüre et
-                    var roomButton = roomItem.GetComponent<Button>();
-                    var roomText = roomItem.GetComponentInChildren<TextMeshProUGUI>();
-                    
-                    if (roomText != null)
+                    // RoomListItem script'ini kullan
+                    var roomListItemScript = roomItem.GetComponent<RoomListItem>();
+                    if (roomListItemScript != null)
                     {
-                        roomText.text = $"{roomInfo.Name} ({roomInfo.PlayerCount}/{roomInfo.MaxPlayers})";
+                        roomListItemScript.Setup(
+                            roomInfo.Name, 
+                            roomInfo.PlayerCount, 
+                            roomInfo.MaxPlayers, 
+                            JoinSpecificRoom
+                        );
                     }
-                    
-                    if (roomButton != null)
+                    else
                     {
-                        string roomName = roomInfo.Name;
-                        roomButton.onClick.AddListener(() => JoinSpecificRoom(roomName));
+                        // Fallback: Eğer RoomListItem script'i yoksa manuel setup
+                        var roomButton = roomItem.GetComponent<Button>();
+                        var roomTexts = roomItem.GetComponentsInChildren<TextMeshProUGUI>();
+                        
+                        // İlk text → Oda ismi
+                        if (roomTexts.Length > 0 && roomTexts[0] != null)
+                        {
+                            roomTexts[0].text = roomInfo.Name;
+                        }
+                        
+                        // İkinci text → Oyuncu sayısı
+                        if (roomTexts.Length > 1 && roomTexts[1] != null)
+                        {
+                            roomTexts[1].text = $"{roomInfo.PlayerCount}/{roomInfo.MaxPlayers}";
+                        }
+                        
+                        if (roomButton != null)
+                        {
+                            string roomName = roomInfo.Name;
+                            roomButton.onClick.RemoveAllListeners();
+                            roomButton.onClick.AddListener(() => JoinSpecificRoom(roomName));
+                            
+                            // Oda doluysa butonu deaktif et
+                            roomButton.interactable = roomInfo.PlayerCount < roomInfo.MaxPlayers;
+                        }
                     }
                 }
             }
