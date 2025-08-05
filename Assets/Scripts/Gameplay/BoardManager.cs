@@ -3,6 +3,12 @@ using UnityEngine;
 using Harfpoly.Gameplay;
 using TMPro;
 using UnityEngine.UI;
+using NaughtyAttributes;
+
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class BoardManager : MonoBehaviour
 {
@@ -45,6 +51,33 @@ public class BoardManager : MonoBehaviour
     [Header("Dice")]
     public Dice dice;   // Scene'deki Dice objesini buraya sürükle
 
+    // ------------- CENGO Kuralları --------------
+    [Header("CENGO Kuralları")]
+    public bool useCengoRules = true;
+
+    private HashSet<Piece> rescuedPieces_Brown = new();
+    private HashSet<Piece> rescuedPieces_White = new();
+
+    // Player 1 (Kahverengi) taşları için CENGO koordinatları
+    private readonly Dictionary<PieceKind, List<Vector2Int>> brownCengoCoords = new()
+    {
+        { PieceKind.X, new List<Vector2Int> { new Vector2Int(0, 0), new Vector2Int(1, 0) } },
+        { PieceKind.Square, new List<Vector2Int> { new Vector2Int(0, 1), new Vector2Int(1, 1) } },
+        { PieceKind.Triangle, new List<Vector2Int> { new Vector2Int(0, 2), new Vector2Int(1, 2) } },
+        { PieceKind.Circle, new List<Vector2Int> { new Vector2Int(0, 3), new Vector2Int(1, 3) } }
+    };
+
+    // Player 2 (Beyaz) taşları için CENGO koordinatları
+    private readonly Dictionary<PieceKind, List<Vector2Int>> whiteCengoCoords = new()
+    {
+        { PieceKind.X, new List<Vector2Int> { new Vector2Int(6, 0), new Vector2Int(7, 0) } },
+        { PieceKind.Square, new List<Vector2Int> { new Vector2Int(6, 1), new Vector2Int(7, 1) } },
+        { PieceKind.Triangle, new List<Vector2Int> { new Vector2Int(6, 2), new Vector2Int(7, 2) } },
+        { PieceKind.Circle, new List<Vector2Int> { new Vector2Int(6, 3), new Vector2Int(7, 3) } }
+    };
+
+    private bool gameEnded = false;
+
     // ------------- Turn/Zar Durumları --------------
     private enum Turn { My, Opponent }  // My = Player1 (kahverengi), Opponent = Player2 (krem)
     [SerializeField] private Turn turn = Turn.My; // runtime'da Start'ta rastgele belirlenecek
@@ -76,6 +109,18 @@ public class BoardManager : MonoBehaviour
     // ------------------- START -------------------
     private void Start()
     {
+        Debug.Log("[BoardManager] Start başladı...");
+        
+        // Referans kontrolleri
+        if (cam == null) Debug.LogError("[BoardManager] Camera referansı eksik!");
+        if (dice == null) Debug.LogError("[BoardManager] Dice referansı eksik!");
+        if (turnLabel == null) Debug.LogWarning("[BoardManager] TurnLabel referansı eksik!");
+        if (messageLabel == null) Debug.LogWarning("[BoardManager] MessageLabel referansı eksik!");
+        if (myPieces == null || myPieces.Length == 0) Debug.LogError("[BoardManager] MyPieces array'i boş!");
+        if (opponentPieces == null || opponentPieces.Length == 0) Debug.LogError("[BoardManager] OpponentPieces array'i boş!");
+        
+        gameEnded = false;
+
         // listeleri temizle/tekilleştir
         ValidateAndFixPieceLists();
 
@@ -108,7 +153,17 @@ public class BoardManager : MonoBehaviour
         else
         {
             dice.OnRolled += OnDiceRolled;
+            Debug.Log("[BoardManager] Dice event'e abone olundu.");
         }
+
+        // CENGO kuralları aktifse başlangıç kontrolü
+        if (useCengoRules)
+        {
+            CheckCengoVictory();
+        }
+
+        // Test pozisyonu yerleştir (geliştirme aşamasında)
+        // PlaceCengoTestPosition();
 
         Debug.Log($"[START] İlk sıra: {turn}. Zar atmak için SPACE/R.");
     }
@@ -121,6 +176,9 @@ public class BoardManager : MonoBehaviour
     // ------------------- UPDATE -------------------
     private void Update()
     {
+        // Oyun bittiyse input alınmaz
+        if (gameEnded) return;
+
         // Mesaj zamanlayıcı
         if (messageLabel != null && messageLabel.gameObject.activeSelf && Time.time >= messageHideAt && messageHideAt > 0f)
             messageLabel.gameObject.SetActive(false);
@@ -183,7 +241,7 @@ public class BoardManager : MonoBehaviour
         if (!IsOneStep(dx, dy)) return;   // yalnız 1 kare
         if (!InBounds(ti, tj)) return;    // sınır kontrol
 
-        // Hamleden önce grid’i güncelle
+        // Hamleden önce grid'i güncelle
         RecomputeGridOccupancy();
 
         // Hedef DOLU ise gitme
@@ -196,6 +254,13 @@ public class BoardManager : MonoBehaviour
         // Hamle
         MoveSelectedPiece(ti, tj);
 
+        // CENGO kontrolü hamleden sonra
+        if (useCengoRules)
+        {
+            CheckCengoVictory();
+            if (gameEnded) return; // Oyun bittiyse devam etme
+        }
+
         // Seçim rengini kapat
         selectedPiece.DeselectPiece();
         selectedPiece = null;
@@ -204,6 +269,161 @@ public class BoardManager : MonoBehaviour
         SpendMoveAndAdvance();
     }
 
+    // =================== CENGO KURALLARI ===================
+
+    private void CheckCengoVictory()
+    {
+        if (!useCengoRules || gameEnded) return;
+
+        rescuedPieces_Brown.Clear();
+        rescuedPieces_White.Clear();
+
+        // Player 1 (kahverengi) taşlarını kontrol et
+        foreach (var p in myPieces)
+        {
+            if (p == null) continue;
+            if (IsPieceOnMatchingGoal(p, true))
+            {
+                rescuedPieces_Brown.Add(p);
+            }
+        }
+
+        // Player 2 (krem) taşlarını kontrol et
+        foreach (var p in opponentPieces)
+        {
+            if (p == null) continue;
+            if (IsPieceOnMatchingGoal(p, false))
+            {
+                rescuedPieces_White.Add(p);
+            }
+        }
+
+        // Zafer kontrolü - 8 taş hedefe ulaştıysa kazanır
+        if (rescuedPieces_Brown.Count >= 8)
+        {
+            ShowMessage($"{player1Name} (Kahverengi) CENGO ile kazandı! 🎉", 10f);
+            EndGame();
+        }
+        else if (rescuedPieces_White.Count >= 8)
+        {
+            ShowMessage($"{player2Name} (Krem) CENGO ile kazandı! 🎉", 10f);
+            EndGame();
+        }
+        else
+        {
+            // Durumu göster
+            Debug.Log($"[CENGO] Player 1: {rescuedPieces_Brown.Count}/8 | Player 2: {rescuedPieces_White.Count}/8");
+        }
+    }
+
+    private bool IsRescued(Piece p)
+    {
+        return rescuedPieces_Brown.Contains(p) || rescuedPieces_White.Contains(p);
+    }
+
+    private void PlaceCengoTestPosition()
+    {
+        // Grid'i temizle
+        for (int i = 0; i < RowCount; i++)
+            for (int j = 0; j < ColCount; j++)
+                grid[i, j] = null;
+
+        // Player 1 (Kahverengi) taşlarını CENGO pozisyonlarına yerleştir
+        Dictionary<PieceKind, int> brownIndex = new();
+        foreach (var piece in myPieces)
+        {
+            if (piece == null) continue;
+            
+            if (!brownIndex.ContainsKey(piece.kind)) brownIndex[piece.kind] = 0;
+            
+            if (brownCengoCoords.ContainsKey(piece.kind) && brownIndex[piece.kind] < brownCengoCoords[piece.kind].Count)
+            {
+                var pos = brownCengoCoords[piece.kind][brownIndex[piece.kind]];
+                brownIndex[piece.kind]++;
+                piece.x = pos.x;
+                piece.y = pos.y;
+                piece.MoveTo(piece.GetGridPosition(piece.x, piece.y));
+                grid[piece.x, piece.y] = piece;
+                Debug.Log($"[TEST] Player 1 {piece.kind} taşı ({pos.x},{pos.y}) konumuna yerleştirildi");
+            }
+        }
+
+        // Player 2 (Beyaz) taşlarını CENGO pozisyonlarına yerleştir
+        Dictionary<PieceKind, int> whiteIndex = new();
+        foreach (var piece in opponentPieces)
+        {
+            if (piece == null) continue;
+            
+            if (!whiteIndex.ContainsKey(piece.kind)) whiteIndex[piece.kind] = 0;
+            
+            if (whiteCengoCoords.ContainsKey(piece.kind) && whiteIndex[piece.kind] < whiteCengoCoords[piece.kind].Count)
+            {
+                var pos = whiteCengoCoords[piece.kind][whiteIndex[piece.kind]];
+                whiteIndex[piece.kind]++;
+                piece.x = pos.x;
+                piece.y = pos.y;
+                piece.MoveTo(piece.GetGridPosition(piece.x, piece.y));
+                grid[piece.x, piece.y] = piece;
+                Debug.Log($"[TEST] Player 2 {piece.kind} taşı ({pos.x},{pos.y}) konumuna yerleştirildi");
+            }
+        }
+
+        Debug.Log("[TEST] CENGO test pozisyonu yerleştirildi.");
+        CheckCengoVictory();
+    }
+
+    private bool IsPieceOnMatchingGoal(Piece p, bool isPlayer1)
+    {
+        // Taş türüne göre doğru koordinat listesini al
+        var coords = isPlayer1 ? brownCengoCoords : whiteCengoCoords;
+        
+        if (!coords.ContainsKey(p.kind)) return false;
+        
+        var validCoords = coords[p.kind];
+        
+        // Taşın pozisyonu geçerli koordinatlardan birinde mi?
+        foreach (var coord in validCoords)
+        {
+            if (p.x == coord.x && p.y == coord.y)
+                return true;
+        }
+        return false;
+    }
+
+    private void EndGame()
+    {
+        gameEnded = true;
+        Debug.Log("[CENGO] Oyun bitti! 5 saniye sonra oyun kapanacak.");
+
+        // Seçili taşı temizle
+        if (selectedPiece != null)
+        {
+            selectedPiece.DeselectPiece();
+            selectedPiece = null;
+        }
+
+        // Zar kontrollerini durdur
+        needRoll = false;
+        waitingDiceResult = false;
+        moveQueue.Clear();
+
+        // 5 saniye sonra oyunu kapat
+        StartCoroutine(EndGameAfterDelay(5f));
+    }
+
+    private System.Collections.IEnumerator EndGameAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        Debug.Log("[CENGO] Oyun kapatılıyor...");
+        
+        // Burada sahne geçişi, buton çıkışı vs. yapılabilir
+        // Örneğin: SceneManager.LoadScene("MainMenu");
+        // Veya bir UI paneli açılabilir
+        
+        // Şimdilik sadece debug mesajı
+        Debug.Log("[CENGO] Oyun tamamen bitti!");
+    }
 
     // =================== UI HELPERLAR ===================
 
@@ -237,6 +457,8 @@ public class BoardManager : MonoBehaviour
 
     private void TryRollDice()
     {
+        if (gameEnded) return; // Oyun bittiyse zar atılmaz
+
         if (dice == null)
         {
             Debug.LogError("[Dice] BoardManager.dice atanmadı! Scene'deki Dice objesini Inspector'da bağla.");
@@ -258,6 +480,8 @@ public class BoardManager : MonoBehaviour
 
     private void OnDiceRolled(DiceFaces face)
     {
+        if (gameEnded) return; // Oyun bittiyse zar sonucunu işleme
+
         waitingDiceResult = false;
         Debug.Log($"[Dice->Board] Geldi: {face}");
 
@@ -337,6 +561,8 @@ public class BoardManager : MonoBehaviour
 
     private void SpendMoveAndAdvance()
     {
+        if (gameEnded) return; // Oyun bittiyse hamle ilerletme
+
         if (moveQueue.Count == 0)
         {
             EndTurn();
@@ -362,6 +588,8 @@ public class BoardManager : MonoBehaviour
 
     private void EndTurn()
     {
+        if (gameEnded) return; // Oyun bittiyse tur değiştirme
+
         moveQueue.Clear();
         needRoll = true;
         smilePendingReroll = false;
@@ -374,7 +602,7 @@ public class BoardManager : MonoBehaviour
 
         // UI
         UpdateTurnLabel();
-        ShowMessage($"Sıra {CurrentPlayerDisplayName()}’de!", messageDuration);
+        ShowMessage($"Sıra {CurrentPlayerDisplayName()}'de!", messageDuration);
 
         Debug.Log($"[TURN] Sıra: {turn}. Zar atmak için SPACE/R.");
     }
@@ -403,6 +631,7 @@ public class BoardManager : MonoBehaviour
 
     private bool CanSelectThisPiece(Piece p)
     {
+        if (gameEnded) return false; // Oyun bittiyse taş seçme
         if (needRoll || waitingDiceResult) return false;
         if (moveQueue.Count == 0) return false;
 
@@ -419,10 +648,26 @@ public class BoardManager : MonoBehaviour
         if (b.requiredKind.HasValue && p.kind != b.requiredKind.Value)
             return false;
 
+        // Güvenli bölge kontrolü
+        if (IsRescued(p))
+        {
+            // Eğer bu taş güvenli bölgedeyse ve rakip taşını oynatıyorsak (2x gülen yüz durumu)
+            if (b.owner == MoveOwner.Opponent)
+            {
+                // Rakip taşını oynatırken güvenli bölgedeki taşları seçemez
+                return false;
+            }
+            else
+            {
+                // Kendi taşını oynatırken güvenli bölgedeki taşları seçebilir
+                return true;
+            }
+        }
+
         return true;
     }
 
-    // -------------------- Oto Pas Yardımcıları --------------------
+    // -------------------- Oto pas Yardımcıları --------------------
 
     // Sıradaki bütçede (moveQueue.Peek) oynanabilir en az bir hamle var mı?
     private bool HasAnyLegalMove(MoveBudget budget)
@@ -444,6 +689,18 @@ public class BoardManager : MonoBehaviour
             // Sembol kısıtı varsa uyuşmalı
             if (budget.requiredKind.HasValue && p.kind != budget.requiredKind.Value)
                 continue;
+
+            // Güvenli bölge kontrolü
+            if (IsRescued(p))
+            {
+                // Eğer bu taş güvenli bölgedeyse ve rakip taşını oynatıyorsak (2x gülen yüz durumu)
+                if (budget.owner == MoveOwner.Opponent)
+                {
+                    // Rakip taşını oynatırken güvenli bölgedeki taşları seçemez
+                    continue;
+                }
+                // Kendi taşını oynatırken güvenli bölgedeki taşları seçebilir
+            }
 
             // Etrafındaki 8 kareden en az biri boş mu?
             for (int k = 0; k < OneStepDirs.Length; k++)
@@ -734,5 +991,113 @@ public class BoardManager : MonoBehaviour
         }
         return true;
     }
+
+    // =================== PUBLIC METODLAR (DIŞARIDAN ERİŞİM İÇİN) ===================
+
+    /// <summary>
+    /// CENGO kurallarını manuel olarak kontrol etmek için
+    /// </summary>
+    public void ManualCheckCengoVictory()
+    {
+        CheckCengoVictory();
+    }
+
+    /// <summary>
+    /// Oyunu yeniden başlatmak için
+    /// </summary>
+    public void RestartGame()
+    {
+        gameEnded = false;
+        rescuedPieces_Brown.Clear();
+        rescuedPieces_White.Clear();
+        Start(); // Oyunu yeniden başlat
+    }
+
+    /// <summary>
+    /// Mevcut CENGO durumunu öğrenmek için
+    /// </summary>
+    public (int player1Count, int player2Count) GetCengoStatus()
+    {
+        if (!useCengoRules) return (0, 0);
+
+        CheckCengoVictory(); // Güncel durumu hesapla
+        return (rescuedPieces_Brown.Count, rescuedPieces_White.Count);
+    }
+
+    /// <summary>
+    /// Test pozisyonunu yerleştirmek için public metod
+    /// </summary>
+    public void SetCengoTestPosition()
+    {
+        PlaceCengoTestPosition();
+    }
+
+    // =================== DEBUG METODLARI ===================
+
+#if UNITY_EDITOR
+    [Button("DEBUG: Cengo taşlarını güvenli bölgeye yerleştir")]
+    private void PlaceCengoWinScenario()
+    {
+        // Grid'i temizle
+        for (int i = 0; i < RowCount; i++)
+            for (int j = 0; j < ColCount; j++)
+                grid[i, j] = null;
+
+        // Player 1 (Kahverengi) taşlarını CENGO pozisyonlarına yerleştir
+        Dictionary<PieceKind, int> brownIndex = new();
+        foreach (var p in myPieces)
+        {
+            if (p == null) continue;
+            
+            if (!brownIndex.ContainsKey(p.kind)) brownIndex[p.kind] = 0;
+            
+            if (brownCengoCoords.ContainsKey(p.kind) && brownIndex[p.kind] < brownCengoCoords[p.kind].Count)
+            {
+                var pos = brownCengoCoords[p.kind][brownIndex[p.kind]];
+                brownIndex[p.kind]++;
+                p.x = pos.x;
+                p.y = pos.y;
+                p.MoveTo(p.GetGridPosition(p.x, p.y));
+                grid[p.x, p.y] = p;
+                Debug.Log($"[DEBUG] Player 1 {p.kind} taşı ({pos.x},{pos.y}) konumuna yerleştirildi");
+            }
+        }
+
+        // Player 2 (Beyaz) taşlarını CENGO pozisyonlarına yerleştir
+        Dictionary<PieceKind, int> whiteIndex = new();
+        foreach (var p in opponentPieces)
+        {
+            if (p == null) continue;
+            
+            if (!whiteIndex.ContainsKey(p.kind)) whiteIndex[p.kind] = 0;
+            
+            if (whiteCengoCoords.ContainsKey(p.kind) && whiteIndex[p.kind] < whiteCengoCoords[p.kind].Count)
+            {
+                var pos = whiteCengoCoords[p.kind][whiteIndex[p.kind]];
+                whiteIndex[p.kind]++;
+                p.x = pos.x;
+                p.y = pos.y;
+                p.MoveTo(p.GetGridPosition(p.x, p.y));
+                grid[p.x, p.y] = p;
+                Debug.Log($"[DEBUG] Player 2 {p.kind} taşı ({pos.x},{pos.y}) konumuna yerleştirildi");
+            }
+        }
+
+        Debug.Log("[DEBUG] CENGO kazanma pozisyonu yerleştirildi!");
+        CheckCengoVictory();
+    }
+
+    [Button("DEBUG: Test CENGO Pozisyonu Yerleştir")]
+    private void DebugPlaceCengoTestPosition()
+    {
+        PlaceCengoTestPosition();
+    }
+
+    [Button("DEBUG: CENGO Durumunu Kontrol Et")]
+    private void DebugCheckCengoStatus()
+    {
+        CheckCengoVictory();
+        Debug.Log($"[DEBUG CENGO] Player 1 (Kahverengi): {rescuedPieces_Brown.Count}/8 | Player 2 (Beyaz): {rescuedPieces_White.Count}/8");
+    }
+#endif
 }
- 
